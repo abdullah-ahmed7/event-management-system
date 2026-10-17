@@ -1,39 +1,62 @@
 
 const API_KEY = import.meta.env.VITE_TICKETMASTER_API_KEY;
-
 const BASE_URL = "https://app.ticketmaster.com/discovery/v2";
 
-export async function getEvents(keyword = "") {
+function getStartDateTime() {
+  return new Date().toISOString().split(".")[0] + "Z";
+}
+
+async function requestEvents(endpoint, filters = {}) {
   if (!API_KEY) {
     throw new Error("Ticketmaster API key is missing.");
   }
 
-  // Current UTC time without milliseconds
-  const now = new Date().toISOString().split(".")[0] + "Z";
-
-  // Build the request
   const params = new URLSearchParams({
     apikey: API_KEY,
-    size: "20",
-    sort: "date,asc",
-    startDateTime: now,
+    ...filters,
   });
 
-  if (keyword.trim()) {
-    params.set("keyword", keyword.trim());
-  }
-
   const response = await fetch(
-    `${BASE_URL}/events.json?${params.toString()}`
+    `${BASE_URL}/${endpoint}?${params.toString()}`
   );
 
   if (!response.ok) {
-    throw new Error(
-      `Ticketmaster API error: ${response.status}`
-    );
+    throw new Error(`Ticketmaster API error: ${response.status}`);
   }
 
-  const data = await response.json();
+  return response.json();
+}
+
+export async function getEvents(
+  keyword = "",
+  category = "",
+  city = ""
+) {
+  const filters = {
+    size: "20",
+    sort: "date,asc",
+    startDateTime: getStartDateTime(),
+  };
+
+  if (keyword.trim()) {
+    filters.keyword = keyword.trim();
+  }
+
+  if (category) {
+    filters.classificationName = category;
+  }
+
+  if (city.trim()) {
+    filters.city = city.trim();
+  }
+
+  const data = await requestEvents("events.json", filters);
 
   return data._embedded?.events ?? [];
+}
+
+export async function getEventById(id) {
+  return requestEvents(
+    `events/${encodeURIComponent(id)}.json`
+  );
 }
