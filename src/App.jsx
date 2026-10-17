@@ -1,20 +1,38 @@
 
-import EventCard from "./components/EventCard.jsx";
+import { Routes, Route, Link } from "react-router-dom";
+
+import Home from "./pages/Home.jsx";
+import EventDetails from "./pages/EventDetails.jsx";
+import Login from "./pages/Login.jsx";
+import Register from "./pages/Register.jsx";
+import MyEvents from "./pages/MyEvents.jsx";
 
 function App() {
   return (
     <div>
-      <h1>Welcome to EventHub</h1>
-      <p>Explore and discover amazing events!</p>
+      <header>
+        <h1>EventHub</h1>
 
-      <EventCard
-        eventName="Technology Conference 2026"
-        location="Lahore, Pakistan"
-        date="15 November 2026"
-        venue="Event Venue"
-        category="Technology"
-        image="https://placehold.co/600x350"
-      />
+        <nav>
+          <Link to="/">Home</Link> |{" "}
+          <Link to="/login">Login</Link> |{" "}
+          <Link to="/register">Register</Link> |{" "}
+          <Link to="/my-events">My Events</Link>
+        </nav>
+      </header>
+
+      <main>
+        <Routes>
+          <Route path="/" element={<Home />} />
+          <Route
+            path="/events/:id"
+            element={<EventDetails />}
+          />
+          <Route path="/login" element={<Login />} />
+          <Route path="/register" element={<Register />} />
+          <Route path="/my-events" element={<MyEvents />} />
+        </Routes>
+      </main>
     </div>
   );
 }
