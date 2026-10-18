@@ -1,8 +1,7 @@
 
 import { useEffect, useState } from "react";
-import { useParams, Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
-
 import { getEventById } from "../services/ticketmaster.js";
 import {
   registerEvent,
@@ -23,31 +22,7 @@ function EventDetails() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
-
-  useEffect(() => {
-    let cancelled = false;
-
-    async function loadEvent() {
-      setLoading(true);
-      setError("");
-      setMessage("");
-
-      try {
-        const data = await getEventById(id);
-        if (!cancelled) setEvent(data);
-      } catch (err) {
-        if (!cancelled) setError(err.message);
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    }
-
-    loadEvent();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [id]);
+  const [showCancelDialog, setShowCancelDialog] = useState(false);
 
   const isRegistered = Boolean(
     user &&
@@ -58,13 +33,44 @@ function EventDetails() {
       )
   );
 
+  useEffect(() => {
+    let active = true;
+
+    async function loadEvent() {
+      setLoading(true);
+      setError("");
+
+      try {
+        const data = await getEventById(id);
+
+        if (active) {
+          setEvent(data);
+        }
+      } catch (err) {
+        if (active) {
+          setError(err.message || "Unable to load event.");
+        }
+      } finally {
+        if (active) {
+          setLoading(false);
+        }
+      }
+    }
+
+    loadEvent();
+
+    return () => {
+      active = false;
+    };
+  }, [id]);
+
   function handleRegister() {
     if (!user) {
       navigate("/login");
       return;
     }
 
-    if (isRegistered || !event) return;
+    if (!event || isRegistered) return;
 
     dispatch(
       registerEvent({
@@ -73,99 +79,161 @@ function EventDetails() {
       })
     );
 
-    setMessage("Successfully registered for this event!");
+    setMessage("You have successfully registered for this event.");
   }
 
   function handleCancel() {
-    if (!user || !isRegistered) return;
+    if (!user || !event) return;
 
     dispatch(
       cancelRegistration({
         userId: user.id,
-        eventId: id,
+        eventId: event.id,
       })
     );
 
+    setShowCancelDialog(false);
     setMessage("Your registration has been cancelled.");
   }
 
-  if (loading) return <p>Loading event details...</p>;
-  if (error) return <p role="alert">Error: {error}</p>;
-  if (!event) return <p>Event not found.</p>;
+  if (loading) {
+    return <p role="status">Loading event details...</p>;
+  }
+
+  if (error) {
+    return <p role="alert">{error}</p>;
+  }
+
+  if (!event) {
+    return <p>Event not found.</p>;
+  }
 
   const venue = event._embedded?.venues?.[0];
-  const image = event.images?.[0]?.url;
-  const eventDate = event.dates?.start?.localDate;
-  const eventTime = event.dates?.start?.localTime;
+  const image =
+    event.images?.find((img) => img.width >= 600)?.url ||
+    event.images?.[0]?.url;
+
+  const category =
+    event.classifications?.[0]?.segment?.name || "Other";
+
+  const eventDate = event.dates?.start?.localDate || "TBA";
+  const eventTime = event.dates?.start?.localTime || "TBA";
 
   return (
     <div className="event-details">
       <Link to="/">← Back to Events</Link>
 
-      <h1>{event.name}</h1>
+      <div className="event-details-heading">
+        <h1>{event.name}</h1>
+
+        {isRegistered && (
+          <span className="registered-badge">
+            ✓ Registered
+          </span>
+        )}
+      </div>
 
       {image && (
-        <img
-          src={image}
-          alt={event.name}
-          style={{ maxWidth: "100%", width: "650px" }}
-        />
+        <img src={image} alt={event.name} />
       )}
 
-      <p>
-        <strong>Date:</strong> {eventDate || "TBA"}
-      </p>
-
-      <p>
-        <strong>Time:</strong> {eventTime || "TBA"}
-      </p>
-
-      <p>
-        <strong>Venue:</strong> {venue?.name || "TBA"}
-      </p>
-
+      <p><strong>Date:</strong> {eventDate}</p>
+      <p><strong>Time:</strong> {eventTime}</p>
+      <p><strong>Venue:</strong> {venue?.name || "TBA"}</p>
       <p>
         <strong>Location:</strong>{" "}
-        {venue?.city?.name || "TBA"}
-        {venue?.state?.name ? `, ${venue.state.name}` : ""}
+        {[venue?.city?.name, venue?.state?.name]
+          .filter(Boolean)
+          .join(", ") || "TBA"}
       </p>
-
-      <p>
-        <strong>Category:</strong>{" "}
-        {event.classifications?.[0]?.segment?.name || "Other"}
-      </p>
+      <p><strong>Category:</strong> {category}</p>
 
       {event.info && (
-        <p style={{ overflowWrap: "anywhere" }}>
-          {event.info}
-        </p>
+        <div className="event-description">
+          <h2>About This Event</h2>
+          <p>{event.info}</p>
+        </div>
       )}
 
-      {message && <p role="status">{message}</p>}
-
-      {!user ? (
-        <div>
-          <p>Please log in to register for this event.</p>
+      <div className="registration-actions">
+        {!user ? (
           <button onClick={() => navigate("/login")}>
             Login to Register
           </button>
-        </div>
-      ) : isRegistered ? (
-        <div>
-          <p>You are registered for this event.</p>
+        ) : isRegistered ? (
+          <>
+            <button
+              type="button"
+              className="registered-btn"
+              disabled
+            >
+              ✓ Already Registered
+            </button>
 
-          <button onClick={handleCancel}>
-            Cancel Registration
+            <button
+              type="button"
+              className="cancel-btn"
+              onClick={() => setShowCancelDialog(true)}
+            >
+              Cancel Registration
+            </button>
+          </>
+        ) : (
+          <button
+            type="button"
+            onClick={handleRegister}
+          >
+            Register for Event
           </button>
+        )}
+      </div>
 
-          <p>
-            <Link to="/my-events">View My Events</Link>
-          </p>
+      {message && (
+        <p className="registration-message" role="status">
+          {message}
+        </p>
+      )}
+
+      {showCancelDialog && (
+        <div
+          className="dialog-overlay"
+          onClick={() => setShowCancelDialog(false)}
+        >
+          <div
+            className="confirmation-dialog"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="cancel-dialog-title"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h2 id="cancel-dialog-title">
+              Cancel Registration?
+            </h2>
+
+            <p>
+              Are you sure you want to cancel your
+              registration for <strong>{event.name}</strong>?
+            </p>
+
+            <div className="dialog-actions">
+              <button
+                type="button"
+                className="keep-btn"
+                onClick={() => setShowCancelDialog(false)}
+              >
+                Keep Registration
+              </button>
+
+              <button
+                type="button"
+                className="cancel-btn"
+                onClick={handleCancel}
+              >
+                Yes, Cancel
+              </button>
+            </div>
+          </div>
         </div>
-      ) : (
-        <button onClick={handleRegister}>
-          Register for Event
-        </button>
       )}
     </div>
   );
