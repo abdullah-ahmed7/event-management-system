@@ -1,5 +1,5 @@
 
-import { Routes, Route, Link } from "react-router-dom";
+import { Routes, Route, Link, NavLink } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 
 import Home from "./pages/Home.jsx";
@@ -7,8 +7,10 @@ import Login from "./pages/Login.jsx";
 import Register from "./pages/Register.jsx";
 import EventDetails from "./pages/EventDetails.jsx";
 import MyEvents from "./pages/MyEvents.jsx";
+import BackToTop from "./components/BackToTop.jsx";
 
 import { logout } from "./features/auth/authSlice.js";
+
 import "./App.css";
 
 function App() {
@@ -21,73 +23,93 @@ function App() {
 
   return (
     <div className="app">
-      <header>
-        <nav>
-          <Link to="/">
-            <strong>EventHub</strong>
+      <header className="site-header">
+        <nav className="navbar" aria-label="Main navigation">
+          <Link to="/" className="nav-brand">
+            EventHub
           </Link>
 
-          {" | "}
+          <div className="nav-links">
+            <NavLink
+              to="/"
+              end
+              className={({ isActive }) =>
+                isActive ? "nav-link active" : "nav-link"
+              }
+            >
+              Home
+            </NavLink>
 
-          <Link to="/">Home</Link>
+            <NavLink
+              to="/my-events"
+              className={({ isActive }) =>
+                isActive ? "nav-link active" : "nav-link"
+              }
+            >
+              My Events
+            </NavLink>
 
-          {" | "}
+            {user ? (
+              <>
+                <span className="nav-user">
+                  Welcome, {user.name}
+                </span>
 
-          <Link to="/my-events">My Events</Link>
+                <button
+                  type="button"
+                  className="logout-btn"
+                  onClick={handleLogout}
+                >
+                  Logout
+                </button>
+              </>
+            ) : (
+              <>
+                <NavLink
+                  to="/login"
+                  className={({ isActive }) =>
+                    isActive ? "nav-link active" : "nav-link"
+                  }
+                >
+                  Login
+                </NavLink>
 
-          {" | "}
-
-          {user ? (
-            <>
-              <span>Welcome, {user.name}</span>
-
-              {" | "}
-
-              <button type="button" onClick={handleLogout}>
-                Logout
-              </button>
-            </>
-          ) : (
-            <>
-              <Link to="/login">Login</Link>
-
-              {" | "}
-
-              <Link to="/register">Register</Link>
-            </>
-          )}
+                <NavLink
+                  to="/register"
+                  className={({ isActive }) =>
+                    isActive ? "nav-link active" : "nav-link"
+                  }
+                >
+                  Register
+                </NavLink>
+              </>
+            )}
+          </div>
         </nav>
       </header>
 
       <main>
         <Routes>
           <Route path="/" element={<Home />} />
-
           <Route path="/login" element={<Login />} />
-
           <Route path="/register" element={<Register />} />
-
-          <Route
-            path="/events/:id"
-            element={<EventDetails />}
-          />
-
-          <Route
-            path="/my-events"
-            element={<MyEvents />}
-          />
+          <Route path="/events/:id" element={<EventDetails />} />
+          <Route path="/my-events" element={<MyEvents />} />
 
           <Route
             path="*"
             element={
-              <div>
+              <div className="not-found">
                 <h1>404 - Page Not Found</h1>
+                <p>The page you're looking for doesn't exist.</p>
                 <Link to="/">Back to Home</Link>
               </div>
             }
           />
         </Routes>
       </main>
+
+      <BackToTop />
     </div>
   );
 }
